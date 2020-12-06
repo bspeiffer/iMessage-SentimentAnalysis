@@ -49,7 +49,7 @@ def extract_messages(db_file):
     skipped = 0
     found = 0
     errored = 0
-    for row in db.query('SELECT datetime (message.date / 1000000000 + strftime ("%s", "2001-01-01"), "unixepoch", "localtime") AS message_date, message.text, message.is_from_me, chat.chat_identifier FROM chat JOIN chat_message_join ON chat. "ROWID" = chat_message_join.chat_id JOIN message ON chat_message_join.message_id = message. "ROWID" ORDER BY message_date ASC'):
+    for row in db.query('SELECT datetime (message.date / 1000000000 + strftime ("%s", "2001-01-01"), "unixepoch", "localtime") AS message_date, message.text, message.is_from_me, message.associated_message_guid, chat.chat_identifier, handle.id as handle_id FROM chat JOIN chat_message_join ON chat. "ROWID" = chat_message_join.chat_id JOIN message ON chat_message_join.message_id = message. "ROWID" LEFT JOIN handle on message.handle_id = handle. "ROWID" ORDER BY message_date ASC'):
         try:
             m = parse_row(row)
         except:
@@ -66,33 +66,33 @@ def extract_messages(db_file):
 
 def parse_row(row):
     ts = row['message_date']
-    
-    if not row['text']:
-        return
 
-    # this date convertion didnt work -- Brent 12/3
+    # convert to datetime object so it can be filtered by year
     dt = datetime.datetime.strptime(ts, '%Y-%m-%d %H:%M:%S')
     logging.debug('[%s] %r %r', dt, row.get('text'), row)
-
-    # if "is_madrid" in row and row['is_madrid']:
-    #     sent = row['madrid_flags'] in MADRID_FLAGS_SENT
-    # elif 'flags' in row:
-    #     sent = row['flags'] in [3, 35]
-    # else:
+    
     sent = row['is_from_me'] == 1
+    tapback = row['associated_message_guid'] =! ''
 
+    #skip blank rows
+    if not row['text']:
+        return    
+
+    #optional filter on messgaes
     if tornado.options.options.sent_only and not sent:
         return
-    if dt.year != tornado.options.options.year:
+    if tornado.options.options.remove_tapback and not tapback:
+        return
+    if tornado.options.options.year and dt.year != tornado.options.options.year:
         return
     
     return dict(
         is_from_me='1' if sent else '0',
-        # service=service,
-        # subject=_utf8(row['subject'] or ''),
+        is_tapback='1' if tapback else '0',
         text=str(row['text'] or ''),
         message_date=ts,
-        chat_identifier=row['chat_identifier']
+        chat_identifier=row['chat_identifier'],
+        handle_id=row['handle_id']
     )
     
     
@@ -100,7 +100,7 @@ def run():
     assert not os.path.exists(tornado.options.options.output_file)
     logging.info('writing out to %s', tornado.options.options.output_file)
     f = open(tornado.options.options.output_file, 'w')
-    columns = ["message_date", "text", "is_from_me", "chat_identifier"]
+    columns = ["message_date", "text", "is_from_me", "is_emote","chat_identifier", "handle_id"]
     writer = csv.DictWriter(f, columns)
     writer.writeheader()
     pattern = os.path.expanduser(tornado.options.options.input_pattern)
@@ -115,8 +115,9 @@ def run():
 if __name__ == "__main__":
     tornado.options.define("input_pattern", type=str, default="~/Library/Messages/chat.db")
     tornado.options.define("output_file", type=str, default="txt_messages.csv")
-    tornado.options.define("year", type=int, default=2019)
+    tornado.options.define("year", type=int, help="Enter a year to filter messages")
     tornado.options.define("sent_only", type=bool, default=False)
+    tornado.options.define("remove_tapback", type=bool, default=False)
     tornado.options.define("exclude_message_text", type=bool, default=False)
     tornado.options.parse_command_line()
     run()
