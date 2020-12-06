@@ -72,7 +72,7 @@ def parse_row(row):
     logging.debug('[%s] %r %r', dt, row.get('text'), row)
     
     sent = row['is_from_me'] == 1
-    tapback = row['associated_message_guid'] =! ''
+    tapback = row['associated_message_guid'] != ''
 
     #skip blank rows
     if not row['text']:
