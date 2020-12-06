@@ -100,7 +100,7 @@ def run():
     assert not os.path.exists(tornado.options.options.output_file)
     logging.info('writing out to %s', tornado.options.options.output_file)
     f = open(tornado.options.options.output_file, 'w')
-    columns = ["message_date", "text", "is_from_me", "is_emote","chat_identifier", "handle_id"]
+    columns = ["message_date", "text", "is_from_me", "is_tapback","chat_identifier", "handle_id"]
     writer = csv.DictWriter(f, columns)
     writer.writeheader()
     pattern = os.path.expanduser(tornado.options.options.input_pattern)
