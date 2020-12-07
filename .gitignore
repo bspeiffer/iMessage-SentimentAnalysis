@@ -1,5 +1,6 @@
 # General
 .DS_Store
+.vscode
 
 # Data File
 txt_messages.csv
