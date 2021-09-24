@@ -1,4 +1,4 @@
-== Articles that I used to help guide my along ==
+== Articles that I used to help guide me along ==
 
 Article that I used as a basis for my query
 https://spin.atomicobject.com/2020/05/22/search-imessage-sql/
